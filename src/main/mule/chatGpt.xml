@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:slack="http://www.mulesoft.org/schema/mule/slack"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:module-hello="http://www.mulesoft.org/schema/mule/module-hello" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/module-hello http://www.mulesoft.org/schema/mule/module-hello/current/mule-module-hello.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/slack http://www.mulesoft.org/schema/mule/slack/current/mule-slack.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="265143aa-aafd-401f-9700-4c6ddcdb3078" >
+		<http:listener-connection host="0.0.0.0" port="8082" protocol="HTTPS">
+			<tls:context >
+				<tls:key-store type="jks" path="keystore.jks" alias="mule" keyPassword="password" password="password" />
+			</tls:context>
+		</http:listener-connection>
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="30fd4070-cf8c-4935-9dd8-594f475dec4d" >
+		<file:connection workingDir="C:\Users\Sai Krishna\Downloads\ChatGpt_SF\Images-ChatGpt" />
+	</file:config>
+	<slack:config name="Slack_Connector_Config" doc:name="Slack Connector Config" doc:id="105532fb-5ce1-4283-89e5-b0df5d047f3d" >
+		<slack:slack-auth-connection >
+			<slack:oauth-authorization-code consumerKey="${slack.consumerkey}" consumerSecret="${slack.consumersecret}" authorizationUrl="https://slack.com/oauth/v2/authorize" accessTokenUrl="https://slack.com/api/oauth.v2.access" scopes="channels:read chat:write channels:history"/>
+			<slack:oauth-callback-config listenerConfig="HTTP_Listener_config" callbackPath="/callback" authorizePath="/authorize" externalCallbackUrl="https://localhost:8082/callback"/>
+			<slack:oauth-store-config objectStore="tokenStore" />
+		</slack:slack-auth-connection>
+	</slack:config>
+	<os:config name="ObjectStore_Config" doc:name="ObjectStore Config" doc:id="fcaa29c5-b3fc-4b48-a022-9c620ca04832" />
+	<os:object-store name="tokenStore" doc:name="Object store" doc:id="b46b0116-3342-4d0f-8325-734f4e868fe6" config-ref="ObjectStore_Config" />
+	<http:listener-config name="HTTP_Listener_config_Listener_Input" doc:name="HTTP Listener config" doc:id="10a6ccef-948f-43ec-be47-ec7a980f8657" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<module-hello:config name="Hello_Smart_Connector_Config" doc:name="Hello Smart Connector Config" doc:id="27f166c7-05fd-4a0e-9863-2adc67e260e9" username="sai" password="sai123" />
+	<configuration-properties doc:name="Configuration properties" doc:id="833395d6-d7a8-40bc-afdb-8319ccf67205" file="Configuration\Configuration.yaml" />
+	<flow name="chatGptCompletion" doc:id="6781939d-d9c6-4f87-806b-d04d82dc26ec" >
+		<http:listener doc:name="Listener" doc:id="c7dc8251-525f-4dc7-8ba1-b0bdefbc92f1" config-ref="HTTP_Listener_config_Listener_Input" path="mulegpt"/>
+		
+		<try doc:name="Try" doc:id="13339335-3f98-4c27-8e78-5c4e5eca6715" >
+			<module-hello:chat-gpt doc:name="Chat gpt" doc:id="8a3644a8-1d9f-4c3f-baee-7543bd6c86cf" operation="AskChatGpt" Apikey="${chatgpt.appkey}" token="150" Instruction="Fix the spelling mistakes" EditPrompt="What day of the wek is it?" InputPrompt="#[payload.chatGpt]" model="text-davinci-003" ImagePrompt="India flag" response_format="b64_json" NumberofImages="1" PixelSize="1024x1024" config-ref="Hello_Smart_Connector_Config" />
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="d4f35d47-0e29-4d79-afde-bfcb72c527ab" >
+					<ee:transform doc:name="Transform Message" doc:id="acf23563-1641-4d76-90c9-9f38f4687250" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorMessage" : error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<logger level="INFO" doc:name="Logger" doc:id="ea69140d-556e-48f9-aed8-7cac7a60d895" message="#[payload]"/>
+	</flow>
+	
+	
+	<flow name="chatGpt-ChatBot-flow" doc:id="2e64e554-c31d-47a8-acbb-f98ef63b9377" >
+		<http:listener doc:name="Listener" doc:id="4be6ea1d-7bbd-4fa1-8aa7-cc5b7d9c393b" config-ref="HTTP_Listener_config_Listener_Input" path="chatbot"/>
+		<try doc:name="Try" doc:id="04d19467-864a-4f77-8536-b58de7706462" >
+			<module-hello:chat-gpt doc:name="Chat gpt" doc:id="211847ae-27f0-44bc-b2f5-aee7d3381343" operation="ChatBot" config-ref="Hello_Smart_Connector_Config" Apikey="${chatgpt.appkey}" model="gpt-3.5-turbo" token="150" ChatBot="#[payload.chatGpt]" role="system" />
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="4ed187dc-6769-4f24-9f49-caa9e49463bf" >
+					<ee:transform doc:name="Transform Message" doc:id="a791ef5b-7e62-4db8-b7b0-08f3ac5f4c97" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorMessage" : error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+	</flow>
+	<flow name="chatGptEdit" doc:id="78c87669-4586-4980-97f5-649e3dd3ec6d" >
+		<http:listener doc:name="Listener" doc:id="5cbb4c2c-3749-4d84-aabe-fb3562e4d99b" config-ref="HTTP_Listener_config_Listener_Input" path="mulegpt/edit"/>
+		
+		<try doc:name="Try" doc:id="f58f3e39-4e76-41f3-a6e2-ea0192d36a3c" >
+			<module-hello:chat-gpt doc:name="Chat gpt" doc:id="9e544edd-607a-4ed9-b3eb-901452761c9f" operation="EDIT" Apikey="${chatgpt.appkey}" token="150" Instruction="Fix the spelling mistakes" EditPrompt="What day of the wek is it?" InputPrompt="#[payload.chatGpt]" model="text-davinci-edit-001" ImagePrompt="India flag" response_format="b64_json" NumberofImages="1" PixelSize="1024x1024" config-ref="Hello_Smart_Connector_Config" />
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="cca7647c-932c-4d43-9294-d9b042d981f6" >
+					<ee:transform doc:name="Transform Message" doc:id="0158a1a3-8464-431f-abe7-e188bc194048" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorMessage" : error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<logger level="INFO" doc:name="Logger" doc:id="095f6d1c-82ca-4646-b3f1-41c3ff558023" />
+	</flow>
+	
+	<flow name="chatGptFlow_Url" doc:id="e13f72c9-f0c9-4a0b-9900-61609ae6f22f" >
+		<http:listener doc:name="Listener" doc:id="8d534850-4f6f-4762-9588-b72399281129" config-ref="HTTP_Listener_config_Listener_Input" path="muleimage/url"/>
+		<try doc:name="Try" doc:id="7f8b4673-61c5-452a-93ea-3af323ce38ac" >
+			<module-hello:chat-gpt doc:name="Chat gpt" doc:id="fcb0ab57-f043-41e3-9916-a8281de86295" operation="ImageCreate" Apikey="${chatgpt.appkey}" model="text-davinci-003" token="150" InputPrompt="test" ImagePrompt="#[payload.chatGpt]" response_format="url" NumberofImages="1" PixelSize="512x512" config-ref="Hello_Smart_Connector_Config" />
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="ca318c2a-14b5-480a-94d2-cfba26f89add" >
+					<ee:transform doc:name="Transform Message" doc:id="742ee177-6596-445f-9719-1ea1979a32ab" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorMessage" : error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<logger level="INFO" doc:name="Logger" doc:id="ff190d00-2098-40e5-858d-23d20a97a379" />
+	</flow>
+	<flow name="dcerfvghFlow_Base64" doc:id="a37de6b1-f792-4572-86d0-b8511f5200a3" >
+		<http:listener doc:name="Listener" doc:id="9ba0e1b6-988f-4924-b4dc-fcd65836ecba" config-ref="HTTP_Listener_config_Listener_Input" path="muleimage/base"/>
+		
+		<try doc:name="Try" doc:id="c0889630-78c3-42a4-b815-c9dc4bdcfe11" >
+			<module-hello:chat-gpt doc:name="Chat gpt" doc:id="922ef641-5f9c-44e6-8098-65b9f9b2e953" operation="ImageCreate" Apikey="${chatgpt.appkey}" token="150" Instruction="Fix the spelling mistakes" EditPrompt="What day of the wek is it?" InputPrompt="#[payload.chatGpt]" model="text-davinci-003" ImagePrompt="#[payload.chatGpt]" response_format="b64_json" NumberofImages="1" PixelSize="1024x1024" config-ref="Hello_Smart_Connector_Config" />
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="2b0a480c-92e4-4f1f-bd2c-589cba4dd99a" >
+					<ee:transform doc:name="Transform Message" doc:id="009cf44e-97ca-4f5d-9a77-55faf590f163" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorMessage" : error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<file:write doc:name="Write" doc:id="747b22aa-ae25-4c68-bb5c-6a0f58865158" config-ref="File_Config" path="test.png">
+			<file:content><![CDATA[#[%dw 2.0
+import * from dw::core::Binaries
+output application/octet-stream
+---
+fromBase64( payload.MulechatGpt.Base640[0] as String) as Binary]]]></file:content>
+		</file:write>
+	</flow>
+	<flow name="chatGptFlow_Moderation" doc:id="efb558a4-fb85-4d9f-9f87-0f42801f2bb2" >
+		<http:listener doc:name="Listener" doc:id="bbe6a976-29ca-4396-b25b-81d1dedb932b" path="/mule/moderation" config-ref="HTTP_Listener_config_Listener_Input"/>
+		<try doc:name="Try" doc:id="1985ebe0-29ec-44df-9164-f705902a3bbe" >
+			<module-hello:chat-gpt doc:name="Chat gpt" doc:id="0b4aec66-23cf-4983-851b-a319b957c422" operation="Moderation" Apikey="${chatgpt.appkey}" model="text-davinci-003" token="150" InputPrompt="#[payload.chatGpt]" config-ref="Hello_Smart_Connector_Config" />
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="6a80bde8-be02-4fad-b5ae-c276cd3814b0" >
+					<ee:transform doc:name="Transform Message" doc:id="e71e01f4-f25d-46a7-95bb-6ba09147d99b" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorMessage" : error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<logger level="INFO" doc:name="Logger" doc:id="a967261d-a11c-419a-9876-55038151bf04" />
+	</flow>
+	
+	<flow name="chatGptFlow_Embdeddings" doc:id="46a3abb6-96c4-403a-81c3-f42821203d12" >
+		<http:listener doc:name="Listener" doc:id="2684ff70-17bb-4872-9dd6-e1197082c5b4" path="/mule/embeddings" config-ref="HTTP_Listener_config_Listener_Input"/>
+		<try doc:name="Try" doc:id="1c41129a-1fbe-4949-8cce-b5b62d8659f1" >
+			<module-hello:chat-gpt doc:name="Chat gpt" doc:id="3d41a3fa-db4c-4ef7-8335-706750a94a12" operation="Embedding" Apikey="${chatgpt.appkey}" model="text-similarity-babbage-001" token="150" InputPrompt="#[payload.chatGpt]" config-ref="Hello_Smart_Connector_Config" />
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="644980ab-de5f-4b46-a739-8ed3893dd879" >
+					<ee:transform doc:name="Transform Message" doc:id="df2e22bb-7e06-4564-9e28-3b44740c1cc1" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorMessage" : error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<logger level="INFO" doc:name="Logger" doc:id="2c0b73f5-5474-462f-b56d-26688195e0fa" />
+	</flow>
+	
+	<flow name="chatGptFlow_ListofModels" doc:id="c63e308c-ccf1-4c7d-93ca-e11bf68faf4a" >
+		<http:listener doc:name="Listener" doc:id="419fbc85-d316-45a5-b7c2-aa6a17884910" path="/mule/listmodels" config-ref="HTTP_Listener_config_Listener_Input"/>
+		<try doc:name="Try" doc:id="8761056a-66dc-4338-8dcd-a3ae43969cc1" >
+			<module-hello:chat-gpt doc:name="Chat gpt" doc:id="004ad026-792c-4bff-971a-1cf0da157316" operation="ListModels" Apikey="${chatgpt.appkey}" model="text-similarity-babbage-001" token="150" InputPrompt="#[payload.chatGpt]" config-ref="Hello_Smart_Connector_Config" />
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="c3c75850-ae9e-41ef-be19-b03969a136f0" >
+					<ee:transform doc:name="Transform Message" doc:id="4a0f057c-3fe7-4389-96d0-88f5e7f93354" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorMessage" : error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<logger level="INFO" doc:name="Logger" doc:id="51f50ce3-7bd2-45a0-a6bf-71513e199d98" />
+	</flow>
+	
+	<flow name="chatGptFlow_RetreieveModel" doc:id="ef1ce79f-07ce-4808-82a7-cace11a1706f" >
+		<http:listener doc:name="Listener" doc:id="56a1c6c2-e6bf-4077-b88b-2ac560326ea7" path="/mule/RetreieveModel" config-ref="HTTP_Listener_config_Listener_Input"/>
+		<try doc:name="Try" doc:id="4b6eab82-7ef0-47c5-82cf-751337a470c9" >
+			<module-hello:chat-gpt doc:name="Chat gpt" doc:id="5aeec067-9ffd-4e09-8e42-2c12d05143c9" operation="RetrieveModel" Apikey="${chatgpt.appkey}" model="text-davinci-003" token="150" InputPrompt="#[payload.chatGpt]" config-ref="Hello_Smart_Connector_Config" />
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="6eb18731-1464-4d1d-af38-6b2433c8d924" >
+					<ee:transform doc:name="Transform Message" doc:id="d1f50f2b-7cd4-4054-97ab-838e139b974d" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"errorMessage" : error.description
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<logger level="INFO" doc:name="Logger" doc:id="a0c40eb1-5ad9-42a2-b360-11e186cda573" />
+	</flow>
+	
+	
+	<flow name="dcerfvghFlow2" doc:id="13e3822f-c050-48ea-92a8-8bfdc1ca8269" >
+		<http:listener doc:name="Listener" doc:id="ff5926f2-d6f6-4313-8676-bbb77905197e" config-ref="HTTP_Listener_config_Listener_Input" path="slack"/>
+		<ee:transform doc:name="Transform Message" doc:id="ef1729aa-0c90-4987-9ba7-f2b425cb71fe" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	channel: p('slack.channelname'),
+	text: payload.prompt
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<slack:create-chatpost-message doc:name="Send Message" doc:id="739080a4-7eae-4672-852f-e754880ec28a" config-ref="Slack_Connector_Config"/>
+	</flow>
+	<flow name="dcerfvghFlow3" doc:id="5ad4c386-374a-4010-9ade-2a9fffb2d75d" >
+		<slack:on-new-message-trigger doc:name="On new message trigger" doc:id="77d2f8c4-6fc3-4c53-a165-ce642f84fe07" config-ref="Slack_Connector_Config" channel="${slack.channelId}" limit="5">
+			<scheduling-strategy >
+				<fixed-frequency />
+			</scheduling-strategy>
+		</slack:on-new-message-trigger>
+		<logger level="INFO" doc:name="Logger" doc:id="bb1ca525-225f-45f6-b5d4-2264446790f2"/>
+		<choice doc:name="Choice" doc:id="61597f46-7615-4957-ad83-ba44ccc6f56a" >
+			<when expression="#[payload.bot_profile.name != p('slack.profilename')]">
+				<module-hello:chat-gpt doc:name="Chat gpt" doc:id="87c31cb4-9609-429e-b9ea-409d7759a543" operation="AskChatGpt" Apikey="${chatgpt.appkey}" token="150" Instruction="Fix the spelling mistakes" EditPrompt="What day of the wek is it?" InputPrompt="#[payload.text]" model="text-davinci-003" ImagePrompt="India flag" response_format="b64_json" NumberofImages="1" PixelSize="1024x1024" config-ref="Hello_Smart_Connector_Config"/>
+				<ee:transform doc:name="Transform Message" doc:id="f33dc0a6-b683-4f53-a8fd-ea2ed5905e65">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	channel: p('slack.channelname'),
+	text: payload.MulechatGpt
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<slack:create-chatpost-message doc:name="Send Message" doc:id="65b653a3-e014-4fae-ba7c-4696ca9ed9b5" config-ref="Slack_Connector_Config" />
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="82510328-c49e-4cad-a1f2-c6c5822c9647" message="Message slack #[payload]" />
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="afa3bf5e-aa4e-496f-85e7-1107efb78969" />
+	</flow>
+</mule>

@@ -1,0 +1,10 @@
+chatgpt:
+ appkey: "ieswzOHbW18zOnGycHHvT3BlbkFJxy62zWrnQlYyKIRO28Se"
+ 
+ 
+slack:
+ channelId: "C05093LCEUS"
+ consumerkey: "5002433279926.4994580731447"
+ consumersecret: "721817ad4a8379c8bba3bdd99a2974fa"
+ channelname : "chatgptmule"
+ profilename : "ChatGpt"
